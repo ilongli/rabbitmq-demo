@@ -1,6 +1,9 @@
 package com.ilongli.rabbitmq.publisher;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.SpringApplication;
@@ -9,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @SpringBootApplication
@@ -42,6 +46,38 @@ public class RabbitmqPublisherApplication {
 
 
         rabbitTemplate.convertAndSend("test.topic", routingKey, message, correlationData);
+        return "test-ok";
+    }
+
+    @GetMapping("test-ttl")
+    public String testTtl() {
+
+        String routingKey = "ttl";
+        String message = "谁TM买小米啊(大概8点50分发)";
+        Message m = MessageBuilder
+                .withBody(message.getBytes(StandardCharsets.UTF_8))
+                .setExpiration("5000")
+                .build();
+
+        rabbitTemplate.convertAndSend("ttl.direct", routingKey, m);
+        return "test-ok";
+    }
+
+    @GetMapping("test-delayed")
+    public String testDelayed() {
+
+        String routingKey = "delay";
+        String message = "谁TM买小米啊(延迟5s后发)";
+        Message m = MessageBuilder
+                .withBody(message.getBytes(StandardCharsets.UTF_8))
+                .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
+                .setHeader("x-delay", "5000")
+                .build();
+
+        CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
+
+        rabbitTemplate.convertAndSend("test.delayed", routingKey, m, correlationData);
+
         return "test-ok";
     }
 }
